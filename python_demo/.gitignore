@@ -1,0 +1,323 @@
+# Python 学习课程 - Git 忽略文件
+
+# ============================================================
+# Python 相关
+# ============================================================
+
+# 字节码文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C 扩展
+*.so
+
+# 分发 / 打包
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# 单元测试 / 覆盖率报告
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# 翻译
+*.mo
+*.pot
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# Sphinx 文档
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# 环境变量
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder 项目设置
+.spyderproject
+.spyproject
+
+# Rope 项目设置
+.ropeproject
+
+# mkdocs 文档
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre 类型检查器
+.pyre/
+
+# pytype 静态类型分析器
+.pytype/
+
+# Cython 调试符号
+cython_debug/
+
+# ============================================================
+# IDE 和编辑器
+# ============================================================
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Eclipse
+.project
+.pydevproject
+.settings/
+
+# NetBeans
+nbproject/
+
+# JetBrains
+.idea/
+*.iml
+
+# ============================================================
+# 操作系统
+# ============================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================================
+# 项目特定文件
+# ============================================================
+
+# 学生练习生成的文件
+*_practice.py
+*_test.py
+my_*.py
+test_*.py
+
+# 项目运行时生成的文件
+*.json
+*.csv
+*.txt
+*.log
+*.db
+*.sqlite
+
+# 但保留示例和文档文件
+!README.md
+!requirements.txt
+!**/README.md
+!**/requirements.txt
+
+# 临时文件和备份
+*.bak
+*.tmp
+*.temp
+*_backup.*
+*_old.*
+
+# 数据文件（学生自己生成的）
+data/
+output/
+temp/
+tmp/
+
+# 上传的文件
+uploads/
+media/
+
+# ============================================================
+# 文档和笔记
+# ============================================================
+
+# 个人笔记（不提交）
+notes.md
+TODO.md
+NOTES.md
+*_notes.md
+
+# 草稿
+draft/
+drafts/
+
+# ============================================================
+# 其他
+# ============================================================
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 图片（如果不需要版本控制）
+# *.jpg
+# *.jpeg
+# *.png
+# *.gif
+# *.bmp
+
+# 视频
+*.mp4
+*.avi
+*.mov
+*.wmv
+
+# 音频
+*.mp3
+*.wav
+*.flac
+
+# 大文件
+*.psd
+*.ai
+
+# 密钥和证书
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+credentials/
+
+# 配置文件（包含敏感信息）
+config.ini
+settings.ini
+.env.local
+.env.*.local
+
+# Node.js（如果项目中有前端部分）
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================================
+# 保留的文件（明确不忽略）
+# ============================================================
+
+# 确保这些文件被跟踪
+!.gitignore
+!.gitkeep

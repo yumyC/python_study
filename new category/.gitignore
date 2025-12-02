@@ -1,0 +1,32 @@
+# Python 虚拟环境
+venv/
+.venv/
+env/
+ENV/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 项目文件
+*.log
+*.db
+*.sqlite
+*.json
+*.csv
+
+# 但保留重要文件
+!requirements.txt
+!README.md
