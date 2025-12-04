@@ -37,8 +37,8 @@
   - 编写知识点检查清单 (checklist.md)
   - _需求: 1.5, 7.2, 7.5_
 
-- [ ] 3. 实现第二阶段：Web 框架与数据库
-- [ ] 3.1 创建 FastAPI 学习模块
+- [-] 3. 实现第二阶段：Web 框架与数据库
+- [x] 3.1 创建 FastAPI 学习模块
   - 编写 FastAPI 模块 README.md 和资源链接
   - 创建 Hello World 示例 (01_hello_world.py)
   - 创建路由示例 (02_routing.py)，演示路径参数和查询参数
@@ -47,7 +47,7 @@
   - 创建 ORM 模型示例 (05_orm_models.py)，使用 SQLAlchemy
   - _需求: 2.1, 2.6, 8.1_
 
-- [ ] 3.2 实现 FastAPI CRUD 示例项目
+- [x] 3.2 实现 FastAPI CRUD 示例项目
   - 创建项目结构 (app 文件夹、models、schemas、api)
   - 实现数据模型和数据库配置
   - 实现 CRUD API 端点（创建、读取、更新、删除）
@@ -55,7 +55,7 @@
   - 创建 run.py 启动脚本
   - _需求: 2.3, 2.5, 8.2_
 
-- [ ] 3.3 创建 Flask 学习模块
+- [x] 3.3 创建 Flask 学习模块
   - 编写 Flask 模块 README.md 和资源链接
   - 创建 Hello World 示例 (01_hello_world.py)
   - 创建路由示例 (02_routing.py)
@@ -64,7 +64,7 @@
   - 创建 ORM 模型示例 (05_orm_models.py)
   - _需求: 2.2, 2.6, 8.1_
 
-- [ ] 3.4 实现 Flask CRUD 示例项目
+- [x] 3.4 实现 Flask CRUD 示例项目
   - 创建项目结构 (app 文件夹、models、views、templates)
   - 实现数据模型和数据库配置
   - 实现 CRUD 路由和视图函数
@@ -72,7 +72,7 @@
   - 创建 run.py 启动脚本
   - _需求: 2.4, 2.5, 8.2_
 
-- [ ] 3.5 创建数据库学习模块和阶段文档
+- [x] 3.5 创建数据库学习模块和阶段文档
   - 编写 SQL 基础教程 (sql_basics.md)
   - 编写 ORM 使用指南 (orm_guide.md)
   - 创建数据库示例代码

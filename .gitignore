@@ -108,10 +108,10 @@ celerybeat.pid
 .env
 .venv
 env/
-venv/
+studyVenv/
 ENV/
 env.bak/
-venv.bak/
+studyVenv.bak/
 
 # Spyder 项目设置
 .spyderproject
