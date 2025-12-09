@@ -1,0 +1,115 @@
+# 基础 GitHub Actions 工作流
+# 这是一个最简单的工作流示例，展示基本结构和概念
+
+name: Basic Workflow
+
+# 触发条件
+on:
+  # 当代码推送到 main 分支时触发
+  push:
+    branches: [ main, master ]
+  
+  # 当创建或更新 Pull Request 时触发
+  pull_request:
+    branches: [ main, master ]
+  
+  # 允许手动触发
+  workflow_dispatch:
+
+# 工作流中的任务
+jobs:
+  # 第一个任务：问候
+  greet:
+    # 运行环境
+    runs-on: ubuntu-latest
+    
+    # 任务步骤
+    steps:
+    # 步骤 1: 检出代码
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    # 步骤 2: 打印问候信息
+    - name: 打印问候
+      run: echo "Hello, GitHub Actions!"
+    
+    # 步骤 3: 显示当前目录
+    - name: 显示当前目录
+      run: pwd
+    
+    # 步骤 4: 列出文件
+    - name: 列出文件
+      run: ls -la
+  
+  # 第二个任务：Python 环境
+  python-setup:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 检出代码
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    # 设置 Python 环境
+    - name: 设置 Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    # 显示 Python 版本
+    - name: 显示 Python 版本
+      run: python --version
+    
+    # 显示 pip 版本
+    - name: 显示 pip 版本
+      run: pip --version
+    
+    # 安装一个简单的包
+    - name: 安装 requests
+      run: pip install requests
+    
+    # 运行简单的 Python 脚本
+    - name: 运行 Python 脚本
+      run: |
+        python -c "import requests; print('requests version:', requests.__version__)"
+  
+  # 第三个任务：环境变量
+  environment-variables:
+    runs-on: ubuntu-latest
+    
+    # 任务级别的环境变量
+    env:
+      JOB_VAR: "This is a job-level variable"
+    
+    steps:
+    - name: 使用环境变量
+      run: |
+        echo "Job variable: $JOB_VAR"
+        echo "GitHub repository: ${{ github.repository }}"
+        echo "GitHub actor: ${{ github.actor }}"
+        echo "GitHub ref: ${{ github.ref }}"
+    
+    - name: 设置步骤级别的环境变量
+      env:
+        STEP_VAR: "This is a step-level variable"
+      run: |
+        echo "Step variable: $STEP_VAR"
+
+# 工作流级别的环境变量
+env:
+  WORKFLOW_VAR: "This is a workflow-level variable"
+
+# 说明：
+# 1. name: 工作流的名称，会显示在 GitHub Actions 页面
+# 2. on: 定义触发工作流的事件
+# 3. jobs: 定义要执行的任务
+# 4. runs-on: 指定运行环境（ubuntu-latest, windows-latest, macos-latest）
+# 5. steps: 任务中的步骤列表
+# 6. uses: 使用预定义的 Action
+# 7. run: 运行 shell 命令
+# 8. env: 定义环境变量
+
+# 使用方法：
+# 1. 将此文件复制到项目的 .github/workflows/ 目录
+# 2. 提交并推送到 GitHub
+# 3. 在 GitHub 仓库的 Actions 标签查看运行结果

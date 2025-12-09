@@ -1,0 +1,238 @@
+# 构建工作流
+# 构建 Python 包和 Docker 镜像
+
+name: Build
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # 构建 Python 包
+  build-package:
+    name: Build Python Package
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: 安装构建工具
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: 构建包
+      run: |
+        python -m build
+    
+    - name: 检查包
+      run: |
+        twine check dist/*
+    
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package
+        path: dist/
+    
+    - name: 发布到 PyPI（仅标签）
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        twine upload dist/*
+      continue-on-error: true
+
+  # 构建 Docker 镜像
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: 登录到容器注册表
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: 提取 Docker 元数据
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha
+    
+    - name: 构建并推送 Docker 镜像
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: 扫描镜像漏洞
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+      continue-on-error: true
+    
+    - name: 上传漏洞扫描结果
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+      continue-on-error: true
+
+  # 构建文档
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: 安装依赖
+      run: |
+        pip install sphinx sphinx-rtd-theme
+        if [ -f docs/requirements.txt ]; then pip install -r docs/requirements.txt; fi
+    
+    - name: 构建文档
+      run: |
+        cd docs
+        make html
+      continue-on-error: true
+    
+    - name: 上传文档
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: docs/_build/html/
+      if: always()
+    
+    - name: 部署到 GitHub Pages
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/_build/html
+      continue-on-error: true
+
+  # 代码质量检查
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: 安装检查工具
+      run: |
+        pip install flake8 black isort mypy pylint
+    
+    - name: 运行 Black（代码格式化检查）
+      run: |
+        black --check .
+      continue-on-error: true
+    
+    - name: 运行 isort（导入排序检查）
+      run: |
+        isort --check-only .
+      continue-on-error: true
+    
+    - name: 运行 Flake8（代码风格检查）
+      run: |
+        flake8 . --max-line-length=88 --extend-ignore=E203
+      continue-on-error: true
+    
+    - name: 运行 MyPy（类型检查）
+      run: |
+        mypy . --ignore-missing-imports
+      continue-on-error: true
+    
+    - name: 运行 Pylint（代码质量检查）
+      run: |
+        pylint **/*.py --exit-zero
+      continue-on-error: true
+
+  # 构建结果汇总
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-package, build-docker, build-docs, code-quality]
+    if: always()
+    
+    steps:
+    - name: 检查构建结果
+      run: |
+        echo "Package build: ${{ needs.build-package.result }}"
+        echo "Docker build: ${{ needs.build-docker.result }}"
+        echo "Docs build: ${{ needs.build-docs.result }}"
+        echo "Code quality: ${{ needs.code-quality.result }}"
+        
+        if [ "${{ needs.build-package.result }}" == "failure" ] || [ "${{ needs.build-docker.result }}" == "failure" ]; then
+          echo "Build failed!"
+          exit 1
+        else
+          echo "Build successful!"
+        fi
+
+# 说明：
+# 1. build: 构建 Python 包
+# 2. docker/build-push-action: 构建并推送 Docker 镜像
+# 3. docker/metadata-action: 自动生成镜像标签
+# 4. trivy: 扫描 Docker 镜像的安全漏洞
+# 5. sphinx: 构建项目文档
+# 6. peaceiris/actions-gh-pages: 部署文档到 GitHub Pages
+
+# 使用方法：
+# 1. 确保项目有 setup.py 或 pyproject.toml
+# 2. 确保项目有 Dockerfile
+# 3. 在 GitHub 仓库设置中配置 PYPI_API_TOKEN（如果要发布到 PyPI）
+# 4. 将此文件复制到 .github/workflows/
+# 5. 推送代码或创建标签触发构建

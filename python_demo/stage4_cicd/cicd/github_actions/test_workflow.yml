@@ -1,0 +1,176 @@
+# 自动化测试工作流
+# 在代码推送或 PR 时自动运行测试
+
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    
+    # 测试矩阵：在多个 Python 版本上测试
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+      # 即使某个版本失败，继续测试其他版本
+      fail-fast: false
+    
+    steps:
+    # 1. 检出代码
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    # 2. 设置 Python 环境
+    - name: 设置 Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    # 3. 缓存 pip 依赖
+    - name: 缓存 pip 依赖
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    # 4. 安装依赖
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    # 5. 运行代码检查（可选）
+    - name: 代码风格检查
+      run: |
+        pip install flake8
+        # 停止构建如果有 Python 语法错误或未定义的名称
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # 警告但不停止构建
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+    
+    # 6. 运行测试
+    - name: 运行测试
+      run: |
+        pytest -v
+    
+    # 7. 生成覆盖率报告
+    - name: 生成覆盖率报告
+      run: |
+        pytest --cov=. --cov-report=xml --cov-report=html
+    
+    # 8. 上传覆盖率报告到 Codecov（可选）
+    - name: 上传覆盖率到 Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+      continue-on-error: true
+    
+    # 9. 上传覆盖率报告作为构建产物
+    - name: 上传覆盖率报告
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report-${{ matrix.python-version }}
+        path: htmlcov/
+      if: always()
+
+  # 集成测试任务
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    
+    # 需要的服务
+    services:
+      # PostgreSQL 数据库
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      # Redis 缓存
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: 安装依赖
+      run: |
+        pip install --upgrade pip
+        pip install pytest pytest-asyncio
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: 运行集成测试
+      env:
+        DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+        REDIS_URL: redis://localhost:6379
+      run: |
+        pytest tests/integration/ -v
+      continue-on-error: true
+
+  # 测试结果汇总
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test, integration-test]
+    if: always()
+    
+    steps:
+    - name: 检查测试结果
+      run: |
+        echo "Unit tests: ${{ needs.test.result }}"
+        echo "Integration tests: ${{ needs.integration-test.result }}"
+        
+        if [ "${{ needs.test.result }}" == "failure" ] || [ "${{ needs.integration-test.result }}" == "failure" ]; then
+          echo "Tests failed!"
+          exit 1
+        else
+          echo "All tests passed!"
+        fi
+
+# 说明：
+# 1. strategy.matrix: 在多个 Python 版本上运行测试
+# 2. actions/cache: 缓存依赖以加速构建
+# 3. services: 启动测试所需的服务（数据库、缓存等）
+# 4. needs: 定义任务依赖关系
+# 5. if: always(): 即使前面的任务失败也运行
+# 6. continue-on-error: 步骤失败不影响整个工作流
+
+# 使用方法：
+# 1. 确保项目根目录有 requirements.txt
+# 2. 确保有 tests/ 目录和测试文件
+# 3. 将此文件复制到 .github/workflows/
+# 4. 推送代码，查看 Actions 运行结果

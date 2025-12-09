@@ -1,0 +1,7 @@
+# 测试依赖
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
+
+# 应用依赖（如果有的话）
+# 本示例是纯 Python，不需要额外依赖

@@ -115,8 +115,8 @@
   - 编写阶段 README.md 和知识点检查清单
   - _需求: 3.6, 7.2, 7.5_
 
-- [ ] 5. 实现第四阶段：测试与 CI/CD
-- [ ] 5.1 创建测试模块
+- [x] 5. 实现第四阶段：测试与 CI/CD
+- [x] 5.1 创建测试模块
   - 编写测试模块 README.md
   - 实现单元测试示例 (01_unit_testing.py)，使用 pytest
   - 实现集成测试示例 (02_integration_testing.py)
@@ -125,7 +125,7 @@
   - 创建完整的测试示例项目
   - _需求: 4.1, 8.1_
 
-- [ ] 5.2 创建 CI/CD 模块
+- [x] 5.2 创建 CI/CD 模块
   - 编写 CI/CD 模块 README.md
   - 创建基础工作流配置 (basic_workflow.yml)
   - 创建测试工作流配置 (test_workflow.yml)
@@ -134,7 +134,7 @@
   - 编写视频教程说明文档和最佳实践指南
   - _需求: 4.2, 4.3, 4.4_
 
-- [ ] 5.3 创建 Docker 模块和阶段文档
+- [x] 5.3 创建 Docker 模块和阶段文档
   - 编写 Docker 模块 README.md
   - 创建 Dockerfile 示例
   - 创建 docker-compose.yml 示例

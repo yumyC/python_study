@@ -1,0 +1,314 @@
+# 部署工作流
+# 自动部署到不同环境
+
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+jobs:
+  # 确定部署环境
+  determine-environment:
+    name: Determine Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+    
+    steps:
+    - name: 确定部署环境
+      id: set-env
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+        elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "environment=production" >> $GITHUB_OUTPUT
+        elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+          echo "environment=staging" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          echo "environment=production" >> $GITHUB_OUTPUT
+        else
+          echo "environment=development" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: 显示部署环境
+      run: |
+        echo "将部署到环境: ${{ steps.set-env.outputs.environment }}"
+
+  # 部署到开发环境
+  deploy-development:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'development'
+    environment:
+      name: development
+      url: https://dev.example.com
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 部署到开发环境
+      run: |
+        echo "部署到开发环境..."
+        echo "服务器: dev.example.com"
+        # 实际部署命令
+        # ssh user@dev.example.com 'cd /app && git pull && docker-compose up -d'
+    
+    - name: 运行健康检查
+      run: |
+        echo "运行健康检查..."
+        # curl -f https://dev.example.com/health || exit 1
+
+  # 部署到测试环境
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging.example.com
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: 安装部署工具
+      run: |
+        pip install fabric
+    
+    - name: 部署到测试环境
+      env:
+        DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
+        STAGING_HOST: ${{ secrets.STAGING_HOST }}
+      run: |
+        echo "部署到测试环境..."
+        echo "服务器: $STAGING_HOST"
+        # 实际部署命令
+        # fab deploy:environment=staging
+    
+    - name: 运行烟雾测试
+      run: |
+        echo "运行烟雾测试..."
+        # pytest tests/smoke/ --base-url=https://staging.example.com
+    
+    - name: 通知团队
+      if: always()
+      run: |
+        echo "发送部署通知..."
+        # 发送 Slack 通知或邮件
+
+  # 部署到生产环境
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'production'
+    environment:
+      name: production
+      url: https://example.com
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 创建部署记录
+      run: |
+        echo "创建部署记录..."
+        echo "版本: ${{ github.sha }}"
+        echo "时间: $(date)"
+    
+    - name: 备份当前版本
+      env:
+        PROD_HOST: ${{ secrets.PROD_HOST }}
+        DEPLOY_KEY: ${{ secrets.PROD_DEPLOY_KEY }}
+      run: |
+        echo "备份当前版本..."
+        # ssh user@prod.example.com 'cd /app && ./backup.sh'
+    
+    - name: 部署到生产环境
+      env:
+        PROD_HOST: ${{ secrets.PROD_HOST }}
+        DEPLOY_KEY: ${{ secrets.PROD_DEPLOY_KEY }}
+      run: |
+        echo "部署到生产环境..."
+        echo "服务器: $PROD_HOST"
+        # 实际部署命令
+        # ssh user@prod.example.com 'cd /app && ./deploy.sh'
+    
+    - name: 运行健康检查
+      run: |
+        echo "运行健康检查..."
+        # curl -f https://example.com/health || exit 1
+    
+    - name: 运行烟雾测试
+      run: |
+        echo "运行烟雾测试..."
+        # pytest tests/smoke/ --base-url=https://example.com
+    
+    - name: 监控部署
+      run: |
+        echo "监控部署状态..."
+        # 检查错误率、响应时间等指标
+    
+    - name: 通知团队
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: '生产环境部署 ${{ job.status }}'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      continue-on-error: true
+
+  # 使用 Docker 部署
+  deploy-docker:
+    name: Deploy with Docker
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment != 'development'
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 登录到容器注册表
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: 拉取最新镜像
+      run: |
+        docker pull ghcr.io/${{ github.repository }}:latest
+    
+    - name: 部署容器
+      env:
+        ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
+      run: |
+        echo "使用 Docker 部署到 $ENVIRONMENT..."
+        # docker-compose -f docker-compose.$ENVIRONMENT.yml up -d
+    
+    - name: 清理旧容器
+      run: |
+        echo "清理旧容器..."
+        # docker system prune -af
+
+  # 使用 Kubernetes 部署
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'production'
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 配置 kubectl
+      uses: azure/k8s-set-context@v3
+      with:
+        method: kubeconfig
+        kubeconfig: ${{ secrets.KUBE_CONFIG }}
+    
+    - name: 部署到 Kubernetes
+      run: |
+        echo "部署到 Kubernetes..."
+        # kubectl apply -f k8s/
+        # kubectl set image deployment/app app=ghcr.io/${{ github.repository }}:${{ github.sha }}
+        # kubectl rollout status deployment/app
+    
+    - name: 验证部署
+      run: |
+        echo "验证 Kubernetes 部署..."
+        # kubectl get pods
+        # kubectl get services
+
+  # 回滚部署
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [deploy-staging, deploy-production]
+    
+    steps:
+    - name: 回滚部署
+      run: |
+        echo "检测到部署失败，执行回滚..."
+        # ssh user@server 'cd /app && ./rollback.sh'
+    
+    - name: 通知团队
+      run: |
+        echo "发送回滚通知..."
+
+  # 部署后验证
+  post-deployment:
+    name: Post Deployment Validation
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+    - name: 运行端到端测试
+      run: |
+        echo "运行端到端测试..."
+        # pytest tests/e2e/
+    
+    - name: 性能测试
+      run: |
+        echo "运行性能测试..."
+        # locust -f tests/performance/locustfile.py --headless
+    
+    - name: 安全扫描
+      run: |
+        echo "运行安全扫描..."
+        # zap-baseline.py -t https://example.com
+    
+    - name: 生成部署报告
+      run: |
+        echo "生成部署报告..."
+        echo "部署时间: $(date)"
+        echo "版本: ${{ github.sha }}"
+        echo "环境: ${{ needs.determine-environment.outputs.environment }}"
+
+# 说明：
+# 1. environment: 使用 GitHub 环境保护规则
+# 2. workflow_dispatch: 支持手动触发部署
+# 3. needs: 定义任务依赖关系
+# 4. if: 条件执行任务
+# 5. secrets: 使用 GitHub Secrets 存储敏感信息
+
+# 环境配置：
+# 1. 在 GitHub 仓库设置中配置环境（development, staging, production）
+# 2. 为每个环境配置保护规则（如需要审批）
+# 3. 配置环境变量和密钥
+
+# 使用方法：
+# 1. 配置 GitHub Secrets:
+#    - STAGING_HOST, STAGING_DEPLOY_KEY
+#    - PROD_HOST, PROD_DEPLOY_KEY
+#    - SLACK_WEBHOOK (可选)
+#    - KUBE_CONFIG (如果使用 Kubernetes)
+# 2. 将此文件复制到 .github/workflows/
+# 3. 推送到对应分支或手动触发部署
