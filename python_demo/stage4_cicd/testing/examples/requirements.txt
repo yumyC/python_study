@@ -1,7 +1,12 @@
 # 测试依赖
-pytest>=7.4.0
-pytest-cov>=4.1.0
-pytest-asyncio>=0.21.0
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-asyncio==0.21.1
+
+# 代码质量工具
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
 
 # 应用依赖（如果有的话）
 # 本示例是纯 Python，不需要额外依赖

@@ -1,11 +1,16 @@
 # Flask CRUD 项目依赖
 
 # Flask 核心框架
-Flask==2.3.3
+Flask==3.0.0
 
 # 数据库 ORM
-Flask-SQLAlchemy==3.0.5
-SQLAlchemy==2.0.20
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.23
 
 # 工具库
-Werkzeug==2.3.7
+Werkzeug==3.0.1
+
+# 开发工具
+pytest==7.4.3
+black==23.11.0
+flake8==6.1.0
