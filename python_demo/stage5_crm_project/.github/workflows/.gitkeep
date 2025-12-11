@@ -1,0 +1,14 @@
+# GitHub Actions Workflows
+
+本目录将包含 CI/CD 工作流配置文件。
+
+## 说明
+
+CI/CD 配置将在后续任务中实现。请参考：
+- 任务 6.9: 创建 CRM 项目的 CI/CD 配置
+
+## 工作流
+
+- `backend_ci.yml`: 后端持续集成
+- `frontend_ci.yml`: 前端持续集成
+- `deploy.yml`: 自动部署

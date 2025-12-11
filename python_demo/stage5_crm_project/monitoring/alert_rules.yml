@@ -1,0 +1,175 @@
+# Prometheus 告警规则
+
+groups:
+  - name: crm_alerts
+    rules:
+      # 应用程序告警
+      - alert: CRMBackendDown
+        expr: up{job="crm-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRM 后端服务不可用"
+          description: "CRM 后端服务已经停止响应超过 1 分钟"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="crm-backend"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 响应时间过高"
+          description: "95% 的请求响应时间超过 2 秒，当前值: {{ $value }}s"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{job="crm-backend",status=~"5.."}[5m]) / rate(http_requests_total{job="crm-backend"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 错误率过高"
+          description: "5xx 错误率超过 5%，当前值: {{ $value | humanizePercentage }}"
+
+      # 数据库告警
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL 数据库不可用"
+          description: "PostgreSQL 数据库连接失败超过 1 分钟"
+
+      - alert: PostgreSQLTooManyConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL 连接数过高"
+          description: "数据库连接数超过最大连接数的 80%"
+
+      - alert: PostgreSQLSlowQueries
+        expr: rate(pg_stat_database_tup_returned[5m]) / rate(pg_stat_database_tup_fetched[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL 查询效率低"
+          description: "数据库查询效率低于 10%"
+
+      # Redis 告警
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis 服务不可用"
+          description: "Redis 服务连接失败超过 1 分钟"
+
+      - alert: RedisMemoryUsageHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis 内存使用率过高"
+          description: "Redis 内存使用率超过 90%，当前值: {{ $value | humanizePercentage }}"
+
+      # 系统资源告警
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU 使用率过高"
+          description: "CPU 使用率超过 80%，当前值: {{ $value }}%"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "内存使用率过高"
+          description: "内存使用率超过 90%，当前值: {{ $value | humanizePercentage }}"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "磁盘空间不足"
+          description: "磁盘可用空间少于 10%，当前值: {{ $value | humanizePercentage }}"
+
+      # Celery 告警
+      - alert: CeleryWorkerDown
+        expr: up{job="celery"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery Worker 不可用"
+          description: "Celery Worker 停止工作超过 2 分钟"
+
+      - alert: CeleryQueueBacklog
+        expr: celery_queue_length > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery 队列积压"
+          description: "Celery 队列中有超过 100 个待处理任务"
+
+      # 网络告警
+      - alert: NginxDown
+        expr: up{job="nginx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Nginx 服务不可用"
+          description: "Nginx 反向代理服务停止响应超过 1 分钟"
+
+      - alert: HighNetworkTraffic
+        expr: rate(node_network_receive_bytes_total[5m]) > 100000000  # 100MB/s
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "网络流量过高"
+          description: "网络接收流量超过 100MB/s，当前值: {{ $value | humanize1024 }}B/s"
+
+  - name: business_alerts
+    rules:
+      # 业务指标告警
+      - alert: HighLoginFailureRate
+        expr: rate(login_attempts_total{status="failed"}[5m]) / rate(login_attempts_total[5m]) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "登录失败率过高"
+          description: "登录失败率超过 30%，可能存在安全风险"
+
+      - alert: NoUserActivity
+        expr: rate(http_requests_total{job="crm-backend",endpoint!="/health"}[1h]) == 0
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "用户活动异常低"
+          description: "过去 30 分钟内没有用户活动"
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: db_connection_pool_active / db_connection_pool_max > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "数据库连接池耗尽"
+          description: "数据库连接池使用率超过 95%"

@@ -1,0 +1,150 @@
+// 全局样式文件
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+#app {
+  height: 100%;
+}
+
+// 布局样式
+.layout-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-header {
+  height: 60px;
+  background: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+}
+
+.layout-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.layout-sidebar {
+  width: 200px;
+  background: #001529;
+  overflow-y: auto;
+}
+
+.layout-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background: #f0f2f5;
+}
+
+// 侧边栏菜单样式
+.sidebar-menu {
+  border: none;
+  
+  .el-menu-item {
+    color: rgba(255, 255, 255, 0.65);
+    
+    &:hover {
+      background-color: #1890ff !important;
+      color: #fff;
+    }
+    
+    &.is-active {
+      background-color: #1890ff !important;
+      color: #fff;
+    }
+  }
+  
+  .el-sub-menu__title {
+    color: rgba(255, 255, 255, 0.65);
+    
+    &:hover {
+      background-color: #1890ff !important;
+      color: #fff;
+    }
+  }
+}
+
+// 页面内容样式
+.page-container {
+  background: #fff;
+  border-radius: 4px;
+  padding: 20px;
+  min-height: calc(100vh - 140px);
+}
+
+.page-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4e7ed;
+  
+  h2 {
+    margin: 0;
+    color: #303133;
+    font-size: 18px;
+    font-weight: 500;
+  }
+}
+
+// 表格样式
+.table-container {
+  .el-table {
+    border: 1px solid #ebeef5;
+  }
+}
+
+// 表单样式
+.form-container {
+  .el-form-item__label {
+    font-weight: 500;
+  }
+}
+
+// 工具栏样式
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  
+  .toolbar-left {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .toolbar-right {
+    display: flex;
+    gap: 12px;
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .layout-sidebar {
+    width: 64px;
+  }
+  
+  .layout-content {
+    padding: 16px;
+  }
+  
+  .page-container {
+    padding: 16px;
+  }
+}

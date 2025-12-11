@@ -1,0 +1,227 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Deploy to staging server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.STAGING_HOST }}
+        username: ${{ secrets.STAGING_USER }}
+        key: ${{ secrets.STAGING_SSH_KEY }}
+        port: ${{ secrets.STAGING_PORT }}
+        script: |
+          # 进入项目目录
+          cd /opt/crm-app
+          
+          # 拉取最新代码
+          git pull origin main
+          
+          # 更新 Docker 镜像
+          docker-compose pull
+          
+          # 重启服务
+          docker-compose down
+          docker-compose up -d
+          
+          # 等待服务启动
+          sleep 30
+          
+          # 健康检查
+          curl -f http://localhost/api/health || exit 1
+          
+          echo "Staging deployment completed successfully"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment: production
+    needs: [deploy-staging]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create deployment package
+      run: |
+        # 创建部署包
+        mkdir -p deployment
+        cp docker-compose.prod.yml deployment/
+        cp nginx.prod.conf deployment/
+        cp .env.production deployment/.env
+        
+        # 创建部署脚本
+        cat > deployment/deploy.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        echo "Starting production deployment..."
+        
+        # 备份当前版本
+        if [ -d "/opt/crm-app-backup" ]; then
+            rm -rf /opt/crm-app-backup
+        fi
+        cp -r /opt/crm-app /opt/crm-app-backup
+        
+        # 更新应用
+        cd /opt/crm-app
+        
+        # 拉取最新镜像
+        docker-compose -f docker-compose.prod.yml pull
+        
+        # 数据库备份
+        docker-compose -f docker-compose.prod.yml exec -T postgres pg_dump -U postgres crm_db > backup_$(date +%Y%m%d_%H%M%S).sql
+        
+        # 滚动更新
+        docker-compose -f docker-compose.prod.yml up -d --no-deps backend
+        sleep 30
+        
+        # 健康检查
+        if ! curl -f http://localhost/api/health; then
+            echo "Health check failed, rolling back..."
+            docker-compose -f docker-compose.prod.yml down
+            cp -r /opt/crm-app-backup/* /opt/crm-app/
+            docker-compose -f docker-compose.prod.yml up -d
+            exit 1
+        fi
+        
+        # 更新前端
+        docker-compose -f docker-compose.prod.yml up -d --no-deps frontend
+        
+        echo "Production deployment completed successfully"
+        EOF
+        
+        chmod +x deployment/deploy.sh
+    
+    - name: Upload deployment package
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-package
+        path: deployment/
+    
+    - name: Deploy to production server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        port: ${{ secrets.PRODUCTION_PORT }}
+        script: |
+          # 下载并执行部署脚本
+          cd /opt/crm-app
+          
+          # 更新环境变量
+          echo "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" > .env
+          echo "REDIS_URL=${{ secrets.PROD_REDIS_URL }}" >> .env
+          echo "SECRET_KEY=${{ secrets.PROD_SECRET_KEY }}" >> .env
+          echo "DOCKER_IMAGE_TAG=${{ github.sha }}" >> .env
+          
+          # 执行部署
+          ./deploy.sh
+    
+    - name: Notify deployment status
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+
+  rollback:
+    runs-on: ubuntu-latest
+    if: failure()
+    environment: production
+    
+    steps:
+    - name: Rollback production deployment
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        port: ${{ secrets.PRODUCTION_PORT }}
+        script: |
+          echo "Rolling back to previous version..."
+          cd /opt/crm-app
+          
+          # 停止当前服务
+          docker-compose -f docker-compose.prod.yml down
+          
+          # 恢复备份
+          if [ -d "/opt/crm-app-backup" ]; then
+              cp -r /opt/crm-app-backup/* /opt/crm-app/
+              docker-compose -f docker-compose.prod.yml up -d
+              echo "Rollback completed"
+          else
+              echo "No backup found for rollback"
+              exit 1
+          fi
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: success()
+    
+    steps:
+    - name: Cleanup old Docker images
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        port: ${{ secrets.PRODUCTION_PORT }}
+        script: |
+          # 清理旧的 Docker 镜像
+          docker image prune -f
+          docker system prune -f --volumes
+          
+          # 保留最近 5 个数据库备份
+          cd /opt/crm-app
+          ls -t backup_*.sql | tail -n +6 | xargs -r rm
+          
+          echo "Cleanup completed"

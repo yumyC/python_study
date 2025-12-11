@@ -1,0 +1,21 @@
+# Backend 目录
+
+本目录将包含 CRM 系统的后端实现。
+
+## 目录结构
+
+```
+backend/
+├── fastapi_version/     # FastAPI 版本实现
+└── flask_version/       # Flask 版本实现
+```
+
+## 说明
+
+后端代码将在后续任务中实现。请参考：
+- 任务 6.2: 实现 FastAPI 版本的数据模型
+- 任务 6.3: 实现 FastAPI 版本的认证授权系统
+- 任务 6.4: 实现 FastAPI 版本的核心业务模块
+- 任务 6.5: 实现 FastAPI 版本的异步任务和中间件
+- 任务 6.6: 完成 FastAPI 版本的配置和文档
+- 任务 6.7: 实现 Flask 版本的 CRM 项目
